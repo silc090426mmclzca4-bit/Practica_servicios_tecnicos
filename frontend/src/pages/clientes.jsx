@@ -4,18 +4,29 @@ import {
   crearCliente, 
   actualizarCliente, 
   eliminarCliente 
-} from "../services/api"; // Ajusta la ruta a tu api.js si está en la misma carpeta (ej: './api')
+} from "../services/api";
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [nombre, setNombre] = useState("");
   const [editandoId, setEditandoId] = useState(null);
   const [mensaje, setMensaje] = useState("");
+  const [cargando, setCargando] = useState(false); // 1. Estado de carga agregado
 
   // Cargar clientes al montar el componente
   const cargarClientes = async () => {
-    const datos = await obtenerClientes();
-    setClientes(datos);
+    try {
+      const r = await obtenerClientes();
+      if (r.ok) {
+        setClientes(r.datos);
+      } else {
+        setClientes([]);
+        setMensaje("Error al obtener la lista de clientes.");
+      }
+    } catch (error) {
+      setClientes([]);
+      setMensaje("Error de conexión con el servidor.");
+    }
   };
 
   useEffect(() => {
@@ -30,16 +41,26 @@ export default function Clientes() {
       return;
     }
 
-    const r = editandoId
-      ? await actualizarCliente(editandoId, { nombre })
-      : await crearCliente({ nombre });
+    setCargando(true); // Desactiva botón
+    setMensaje("");
 
-    setMensaje(r.datos.message || "Solicitud procesada");
+    try {
+      const r = editandoId
+        ? await actualizarCliente(editandoId, { nombre })
+        : await crearCliente({ nombre });
 
-    if (r.ok) {
-      setNombre("");
-      setEditandoId(null);
-      await cargarClientes();
+      if (r.ok) {
+        setMensaje(r.datos?.message || "Solicitud procesada");
+        setNombre("");
+        setEditandoId(null);
+        await cargarClientes();
+      } else {
+        setMensaje(r.datos?.message || "No se pudo guardar el cliente");
+      }
+    } catch (error) {
+      setMensaje("Error de conexión al guardar.");
+    } finally {
+      setCargando(false); // Reactiva botón
     }
   };
 
@@ -60,9 +81,18 @@ export default function Clientes() {
   // Eliminar cliente
   const borrar = async (id) => {
     if (!window.confirm("¿Eliminar este cliente de prueba?")) return;
-    const r = await eliminarCliente(id);
-    setMensaje(r.datos.message || "Solicitud procesada");
-    if (r.ok) await cargarClientes();
+    
+    try {
+      const r = await eliminarCliente(id);
+      if (r.ok) {
+        setMensaje(r.datos?.message || "Cliente eliminado");
+        await cargarClientes();
+      } else {
+        setMensaje("Error al eliminar el cliente.");
+      }
+    } catch (error) {
+      setMensaje("Error de conexión al eliminar.");
+    }
   };
 
   return (
@@ -82,13 +112,14 @@ export default function Clientes() {
           placeholder="Nombre del cliente"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
+          disabled={cargando}
           style={{ flex: "1", padding: "8px" }}
         />
-        <button type="submit" style={{ padding: "8px 16px" }}>
-          {editandoId ? "Actualizar" : "Agregar"}
+        <button type="submit" disabled={cargando} style={{ padding: "8px 16px" }}>
+          {cargando ? "Guardando..." : editandoId ? "Actualizar" : "Agregar"}
         </button>
         {editandoId && (
-          <button type="button" onClick={cancelarEdicion} style={{ padding: "8px 16px" }}>
+          <button type="button" onClick={cancelarEdicion} disabled={cargando} style={{ padding: "8px 16px" }}>
             Cancelar
           </button>
         )}
@@ -104,7 +135,7 @@ export default function Clientes() {
           </tr>
         </thead>
         <tbody>
-          {clientes.map((cliente) => (
+          {Array.isArray(clientes) && clientes.map((cliente) => (
             <tr key={cliente.id}>
               <td>{cliente.id}</td>
               <td>{cliente.nombre}</td>
@@ -118,7 +149,7 @@ export default function Clientes() {
               </td>
             </tr>
           ))}
-          {clientes.length === 0 && (
+          {(!clientes || clientes.length === 0) && (
             <tr>
               <td colSpan="3" style={{ textAlign: "center" }}>No hay clientes registrados.</td>
             </tr>

@@ -8,7 +8,7 @@ function Dashboard() {
 
   const salir = () => {
     cerrarSesion();
-    navigate("/");
+    navigate("/"); // Cambia a "/login" si esa es la ruta de tu formulario de acceso
   };
 
   return (
@@ -21,6 +21,8 @@ function Dashboard() {
       <nav>
         <Link to="/dashboard">Inicio</Link>
         <Link to="/clientes">Clientes</Link>
+        <Link to="/tecnicos">Técnicos</Link>
+        <Link to="/servicios">Servicios</Link> {/* <--- Faltaba este enlace */}
       </nav>
       <button onClick={salir}>Cerrar sesión</button>
     </div>
