@@ -1,5 +1,5 @@
 CREATE DATABASE tecnico;
-USE tecnico;
+USE defaultdb;
 
  CREATE TABLE usuario (
    id INT AUTO_INCREMENT PRIMARY KEY,
